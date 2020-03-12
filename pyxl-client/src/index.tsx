@@ -1,17 +1,37 @@
 import * as React from "react";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {render} from 'react-dom';
 import {hex2uint, hsv} from "./colors";
 import {AutoSize} from "./util";
+import * as signalR from "@microsoft/signalr";
+
 
 require('./style.scss');
 
-const S = 256;
+let connection;
+
+let initPromise = (async () => {
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl("/hub")
+        .build();
+
+    await connection.start().catch(err => console.warn(err));
+
+    await connection.send("joinChannel", "foobar");
+
+    drawState.map = await connection.invoke("getMap");
+
+})();
+
+
+const S = 64;
 
 let drawState = {
     frame: null as OffscreenCanvas,
     fg: 0xff0000,
     bg: 0x000000,
+
+    map: null as { width, height, data },
 
     repaint: null as () => void
 };
@@ -20,11 +40,12 @@ const Canvas = ({width, height}) => {
 
     function ref(ref: HTMLCanvasElement) {
         if (!ref) return;
+
         console.log(ref);
 
         const W = width;
         const H = height;
-        const PS = 8;
+        const PS = 16;
 
         ref.width = W;
         ref.height = H;
@@ -44,7 +65,7 @@ const Canvas = ({width, height}) => {
             ctx.restore();
         }
 
-        function pixel(px, py, c) {
+        function pixel(px, py, c, remote = false) {
             const oc = drawState.frame.getContext('2d');
             const od = oc.getImageData(0, 0, S, S);
             const z = py * S * 4 + px * 4;
@@ -54,7 +75,20 @@ const Canvas = ({width, height}) => {
             od.data[z + 3] = 0xFF;
             // od.data[z + 3] = (c) & 0xFF;
             oc.putImageData(od, 0, 0);
+
+            if (!remote)
+                connection.send('setPixel', px, py, c);
         }
+
+        console.log('hook!');
+
+        // connection.on('putPixel', (x, y, color) => pixel(x, y, color));
+        connection.on('putPixel', (x, y, color) => {
+            console.log(x, y, color);
+            pixel(x, y, color, true);
+            const ctx = ref.getContext('2d');
+            draw(ctx);
+        });
 
         function mousedown(ev) {
             const [x, y] = [ev.offsetX, ev.offsetY];
@@ -113,6 +147,17 @@ const Canvas = ({width, height}) => {
 
 
 const App = () => {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            await initPromise;
+            setReady(true);
+        })();
+    }, []);
+
+    if (!ready) return <div>connecting ... </div>;
+
     return (
         <div className="app">
             <Palette/>
@@ -129,17 +174,25 @@ const Layers= () => {
 
     const [state, setState] = useState(() => {
         const layers = [];
+
+        const SW = drawState.map.width;
+        const SH = drawState.map.width;
+
+        console.log(drawState.map);
+
         for(let i=0; i<4; i++) {
-            const o = new OffscreenCanvas(S, S);
+            const o = new OffscreenCanvas(SW, SH);
             const oc = o.getContext('2d');
-            const od = oc.getImageData(0, 0, S, S);
+            const od = oc.getImageData(0, 0, SW, SH);
             let z = 0;
-            for(let y = 0; y<S; y++)
-                for(let x = 0; x<S; x++) {
-                    // od.data[z + 0] = y * (256/S);
-                    // od.data[z + 1] = x * (256/S);
-                    // od.data[z + 2] = 0;
-                    od.data[z + 3] = 255;
+            let d = 0;
+            for(let y = 0; y<SH; y++)
+                for(let x = 0; x<SW; x++) {
+                    let c = drawState.map.data[d++];
+                    od.data[z] = (c >> 16) & 0xFF;
+                    od.data[z + 1] = (c >> 8) & 0xFF;
+                    od.data[z + 2] = c & 0xFF;
+                    od.data[z + 3] = 0xFF;
                     z += 4;
                 }
             oc.putImageData(od, 0, 0);

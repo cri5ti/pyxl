@@ -15,7 +15,7 @@ export const AutoSize = ({children}: Props) => {
         (entries: ResizeObserverEntry[], observer: ResizeObserver) => {
             const bounds = entries[0].contentRect;
             setSize([bounds.width, bounds.height]);
-            console.log(entries, observer);
+            // console.log(entries, observer);
         }
     ), []);
     useEffect(function() {
@@ -25,7 +25,7 @@ export const AutoSize = ({children}: Props) => {
         setSize([bounds.width, bounds.height]);
     }, []);
 
-    console.log('setSize', size);
+    // console.log('setSize', size);
 
     return (
         <div ref={ref}>

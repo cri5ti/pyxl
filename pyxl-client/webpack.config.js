@@ -36,7 +36,14 @@ module.exports = {
     devtool: "source-map",
     devServer: {
         contentBase: path.join(__dirname, 'dist'),
+        host: '0.0.0.0',
         port: 9000,
+        proxy: {
+            '/hub': {
+                target: 'ws://localhost:5000',
+                ws: true
+            },
+        }
     },
     plugins: [
         new HtmlWebpackPlugin({ template: './src/index.html' }),

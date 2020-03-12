@@ -1,0 +1,67 @@
+
+.app {
+  display: grid;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+
+  grid-template-columns: 140px 1fr;
+  grid-template-rows: 1fr auto;
+
+  .palette {
+    grid-column: 1;
+  }
+
+  .canvas {
+    grid-column: 2;
+    grid-row: 1;
+    height: 400px;
+  }
+
+  .layers {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+
+    background: #666;
+
+    display: flex;
+
+    .layer {
+      border: solid 1px #000;
+      margin: 4px;
+      width: 64px;
+      height: 64px;
+
+      &:hover {
+        outline: solid 1px #09c;
+      }
+
+      &.selected {
+        outline: solid 2px #09c;
+      }
+    }
+
+  }
+}
+
+.palette {
+  max-width: 524px;
+  display: flex;
+  flex-wrap: wrap;
+  background: #000;
+  align-content: flex-start;
+
+  .color {
+    margin: 1px;
+    width: 24px;
+    height: 24px;
+
+    &:hover {
+      outline: solid 1px #09c;
+    }
+
+    &.selected {
+      outline: solid 2px #09c;
+    }
+  }
+
+}
